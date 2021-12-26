@@ -41,7 +41,8 @@ Har bare indlæst de vigtigste pakker fra hele kurset så jeg ikke skal bekymre 
 
 ## Disclaimer 
 
-Diverse steder hvor jeg føler det kunne se godt ud med en anden tabel end den kedelige grå boks i html filerne, så bruger jeg knitr::kable() da det ser bedre ud. Dette kan dog godt give besvær når koden kigges igennem i .rmd filen. Koden tager også ret lang tid at køre igennem, men det er grundet den meget store nestede fil der lige skal have noget tid til at køre igennem.  
+Diverse steder hvor jeg føler det kunne se godt ud med en anden tabel end den kedelige grå boks i html filerne, så bruger jeg knitr::kable() da det ser bedre ud.
+Dette kan dog godt give besvær når koden kigges igennem i .rmd filen. Koden tager også ret lang tid at køre igennem, men det er grundet den meget store nestede fil der lige skal have noget tid til at køre igennem.  
 
 ## OPGAVE 1: Diabetes
 
