@@ -1,0 +1,434 @@
+---
+title: "EKSAMEN - Visualisering af biologiske datasæt 2021"
+author: "Underviser: Sarah Rennie"
+date: "6/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Instruktioner
+
+* Svar på alle spørgsmål
+* Data vil også være tilgængelige __på Absalon__ i tilfældet af, at links nedenfor ikke virker
+* Husk at tilføje hensigtsmæssige titler/akse-labels/farver til dine plots og fjerne eventuelle legends som _ikke_ er nødvendige - der er nogle points tilgængelige til god præsentering af jeres plots.
+* Aflever __både html og koden (.Rmd fil) på Absalon__ - man kan ikke få top karakterer uden en html, men jeg refererer til koden hvis nødvendige
+* Husk at der er mange måder at gøre tingene på - man kan godt få kredit for at lave opgaverne på en anderledes måde end forventet (og man få de korrekte plot/konklusioner til sidste)
+
+## Vigtigt advarsel omkring eksamenssnyd
+
+* Eksamensbesvarelsen skal laves __selvstændigt__, hvilket vil sige, at man sidder alene og ikke kommunikerer med andre.
+* Sektionen for bioinformatik har udviklet algoritmer til at afslørereksamenssnyd, og alle mistænkelige sager bliver indberettet til studielederen på den relevante studieretning.
+* Eksamenssnyd tages meget alvorligt på KU. I kan læse mere om eksamenssnyd her: https://kunet.ku.dk/studie/biologi-ba/Sider/Emne.aspx?topic=Eksamenssnyd&topicId=1ddd47f1-5f4a-4153-809a-d92bcb87fb9e
+
+## Indlæse nødvendige pakker
+
+```{r,comment=F,warning=F,message=F}
+library(tidyverse)
+library(dendextend)
+library(GGally)
+library(glue)
+library(broom)
+library(gridExtra)
+library(NbClust)
+library(ggdendro)
+library(ggrepel)
+```
+
+Har bare indlæst de vigtigste pakker fra hele kurset så jeg ikke skal bekymre mig om dem senere
+
+## Disclaimer 
+
+Diverse steder hvor jeg føler det kunne se godt ud med en anden tabel end den kedelige grå boks i html filerne, så bruger jeg knitr::kable() da det ser bedre ud. Dette kan dog godt give besvær når koden kigges igennem i .rmd filen. Koden tager også ret lang tid at køre igennem, men det er grundet den meget store nestede fil der lige skal have noget tid til at køre igennem.  
+
+## OPGAVE 1: Diabetes
+
+Impoter data med følgende kode:
+
+```{r}
+diabetes <- read.csv("https://www.dropbox.com/s/1sgezypu68r48o6/diabetes2.csv?dl=1")
+diabetes <- as_tibble(diabetes)
+knitr::kable(head(diabetes))
+```
+
+### Data beskrivelse
+
+Dette datasæt stammer fra "National Institute af Diabetes and Digestive and Kidney Diseases" og indeholder data vedrørende kvindelige patienter med alder 21 eller over, som tilhører "Pima Indian heritage" - en etnisk gruppe som er specielt disponeret overfor diabetes.
+
+Data indeholder følgende variabler: 
+
+* Pregnancies - antallet af graviditeter kvinden har haft
+* Glucose - glukoseniveau
+* BloodPressure - blodtryk
+* SkinThickness - hudtykkelse
+* Insulin - insulin niveau
+* BMI - kropsmasseindeks
+* DiabetesPedigreeFunction - en estimering af eventuelle diabetes sygdomme baseret på familiehistoriske oplysninger
+* Age - alder
+* Outcome - 1 hvis patienten har diabetes, 0 hvis patienten ikke har diabetes
+
+Mål: vi vil gerne undersøge om det er muligt at forudsige hvem der har diabetes, baseret på de forskellige variabler i datasættet.
+
+### Spørgsmål for Opgaven 1 (1-5) starter her
+
+__1__) 
+
+__a__) Lav variablen `Outcome` om til at være en faktor.
+
+```{r}
+diabetes <- diabetes %>%
+  mutate(Outcome = as.factor(Outcome))
+```
+
+__b__) Lav variablen `Outcome` om således at der står "Yes" hvis patienten har diabetes og "No" hvis patienten ikke har diabetes. Viser variabelen i dit svar så den kan ses dit html.
+
+```{r}
+diabetes <- diabetes %>%
+  mutate(Outcome = recode(Outcome,`1`="yes",`0`="no"))
+
+knitr::kable(head(diabetes))
+```
+
+__2__) 
+
+__a__) Plot histogrammer for samtlige numeriske variabler i datasættet.
+
+Det ser ud til at Outcome er den eneste variabel som ikke er nummerisk, men lad os da lige tjekke. Der er 9 variable (kan ses i enviroment). Så der burde gerne være 8 numeriske kolonner: 
+
+```{r}
+diabetes %>%
+  select(where(is.numeric)) %>%
+  ncol()
+```
+Så Outcome er den eneste ikke numeriske variabel. For at kunne plotte samtlige numeriske variable sætter vi dataen i long form med `cols = -Outcome` og laver derefter histogrammer over value og fordelt efter name, der indeholder alle de nummeriske variable. Vi opdeler det hele med facet_wrap. 
+
+```{r,fig.width=10}
+diabetes %>%
+  pivot_longer(-Outcome) %>%
+  ggplot(aes(value,fill=name)) +
+  geom_histogram(bins = 30,show.legend = F,color="black") +
+  facet_wrap(~name,scales = "free") +
+  xlab("") +
+  ylab("Antal observationer")
+```
+
+__b__) Kommenter på eventuelle manglende værdier i variablerne.
+
+Vi kan tjekke om der er nogle NA værdier i datasættet. Da der er 768 observationer i det oprindelige datasæt, så burde der være færre observationer hvis der er nogle NA værdier. Dette tjekkes således: 
+```{r}
+diabetes %>%
+  drop_na() %>%
+  nrow()
+```
+Ok, så det er ikke fordi der mangler værdier for diverse variable i nogle observationer. Hvis der med "manglende værdier" menes mellemrummene mellem barene i histogrammerne så kan det som det ses i BMI  at der er nogle med 0 BMI og dette må tydeligvis være en fejl siden det ikke er muligt. Der er altså tegn på fejlbarlig forskningspraksis. 
+
+__3__) 
+
+__a__) Lav datasættet om, så kun rækkerne hvor `BloodPressure`, `BMI` og `Glucose` har en værdi der er forskellig fra nul beholdes. Inkluder antallet af rækker i den resulterende dataframe i din resultatløsning.
+
+```{r}
+diabetes <- diabetes %>%
+  filter(BloodPressure != 0 & BMI != 0 & Glucose != 0)
+
+diabetes %>%
+  nrow()
+```
+Vi har altså skildt os af med `r 768-724` observationer som har været fejlbarlige. 
+
+__b__) Beregn den gennemsnitlige værdi af variablen `Insulin` og variablen `SkinThickness` (dine beregninger skal kun være baserede på værdier forskellige fra nul). 
+
+Jeg forstår dette spørgsmål som at jeg skal regne gennemsnittet af Insulin og SkinThickness undtaget værdierne hvor Insulin er 0 og SkinThickness er 0. 
+
+```{r}
+meaninsogskin <- diabetes %>%
+  filter(Insulin != 0,SkinThickness != 0) %>%
+  summarise(Meanins = mean(Insulin),
+            MeanSkin = mean(SkinThickness))
+knitr::kable(meaninsogskin)
+```
+__c__) Erstat alle tilfælde hvor variablen `Insulin` er lig med nul med den gennemsnitlige `Insulin` værdi, som du beregnede i __b__) (Hint: `ifelse`, eller på en anden måde). Erstat også alle tilfælde hvor variablen `SkinThickness` er lig med nul med den gennemsnitlige `SkinThickness`, som du beregnede i __b__). Inkluder de resulterende variabler i din løsning.
+
+```{r}
+diabetes <- diabetes %>%
+  mutate(Insulin = ifelse(Insulin==0,156.0561,Insulin),
+         SkinThickness = ifelse(SkinThickness==0,29.14541,SkinThickness))
+
+knitr::kable(head(diabetes))
+```
+
+__d__) Plot igen histogrammer som i __2a__) for at sikre at der ikke længere er nul-værdier i datasættet.
+
+Vi anvender samme kode
+
+```{r,fig.width=10}
+diabetes %>%
+  pivot_longer(-Outcome) %>%
+  ggplot(aes(value,fill=name)) +
+  geom_histogram(bins = 30,show.legend = F,color="black") +
+  facet_wrap(~name,scales = "free")
+```
+
+Ser meget bedre ud :)
+
+__4__) 
+
+__a__) Anvend `kmeans` til at lave en clustering af data med 2 clusters. Tilføj resultat til dit datasæt i en __tidy__ form og viser datarammen i dit svar. 
+
+```{r}
+kmeandiabetes <- kmeans(diabetes %>% select(where(is.numeric)) %>% scale(),centers = 2)
+knitr::kable(kmeandiabetes %>% tidy())
+```
+
+__b__) Lav et barplot som viser hvor mange patienter, der er i de forskellige kombinationer af `Outcome` og dine to beregnede clusters (vis barer ved siden af hinanden).
+
+Vi tilføjer først vores kmeans data til vores datasæt ved `augment`
+```{r,fig.width=10}
+diabetes <- augment(kmeandiabetes,diabetes)
+
+diabetes %>%
+  ggplot(aes(.cluster)) +
+  geom_bar(fill="steel blue") +
+  xlab("Cluster") +
+  ylab("Antal observationer i cluster") +
+  facet_wrap(~Outcome)
+```
+
+__5__)
+
+__a__) Lav en principal component analysis baseret på de numeriske variabler og tilføj resultaterne til dit datasæt i en __tidy__ form (vis datarammen).
+
+```{r}
+pcadiabetes <- diabetes %>%
+  select(where(is.numeric)) %>%
+  prcomp(scale=T)
+```
+
+__b__) Hvad er den samlede proportion af varians fanget af den første to principal components?
+
+```{r}
+knitr::kable(pcadiabetes %>%
+  tidy(matrix = "eigenvalues") %>%
+  slice(1:2) %>%
+  summarise(sumpercent = sum(percent)))
+```
+
+De første to PC, fanger altså omtrent 47.5% af dataen. 
+
+__c__) Lav et plot af de første to principal components og farv datapunkter efter deres værdi i variablen `Outcome`.
+
+Ligesom med kmeans, så skal vi lige først augmentere dateen med vores PCA analyse
+
+```{r,fig.width=10}
+diabetes <- augment(pcadiabetes,diabetes)
+
+diabetes %>%
+  ggplot(aes(.fittedPC1,.fittedPC2,color=Outcome)) +
+  geom_point() +
+  xlab("Fitted first principal component") +
+  ylab("fitted second principal component")
+```
+
+__d__) Fortolk dine PCA og kmeans clustering resultater fra __4 b__) og __5 c__) – er det muligt udfra de numeriske variabler at skelne imellem patienterne med og uden diabetes?
+
+Umiddelbart, så kan kmeans proportionelt godt finde hhv dem som har og ikke har diabetes, men der er stadig også en signifikant fejlrate i hvert cluster.
+
+PCA analysen viser ikke helt så meget andet end at det er virkelig blandet. Det ser ud til PC1 har været bedst til at opfange forskellene, men det er stadig ret blandet. 47% er også relativt "lille" mængde af fanget data af PC1 og PC2 tilsammen. 
+
+
+## OPGAVE 2: Transcription factors
+
+### Åbn data
+
+Kør følgende kode til at importere data omhandlende "transcription factors".
+
+```{r}
+SD1 <- read.csv("https://www.dropbox.com/s/hmaq6z0mr5at2t8/SD1.txt?dl=1",sep="\t")
+SD2 <- read.csv("https://www.dropbox.com/s/e2ftr38gvj0jd3g/SD2_9TF.txt?dl=1",sep="\t")
+SD1 <- SD1 %>% as_tibble
+SD2 <- SD2 %>% as_tibble
+knitr::kable(head(SD1))
+knitr::kable(head(SD2))
+```
+
+### Data beskrivelse
+
+Transcription factors (transkriptionsfaktorer) er proteiner, der binder sig til bestemte DNA sekvenser for at regulere transskriptionen af den genetiske information til mRNA.  Præcis binding af transcription factors er nødvendigt for at sikre, at de rigtige gener bliver utrykt i den rigtige celler på de rigtige tidspunkter, samt for at regulere ekspressionsniveauet af de forskellige gener. 
+
+I datasættet `SD2` har vi målinger af flere forskellige transcription factors binding til DNA, lavet ved brug af en teknologi der hedder "ChIP-Seq". Jo højere værdierne, jo stærkere evidens der er, at en givet transcription factor binder sig til DNAet for et givet gen. Vi har også RNA-seq målinger i datasættet `SD1`, som viser mængden af mRNA der bliver produceret for hvert gen.
+
+Vores mål: at undersøge sammenhængen mellem transcription factor DNA binding og et gens ekspressionsniveau. Hvis en sådan sammenhæng findes, kan det indikere at en bestemt transcription factor er vigtig for reguleringen af gener i den undersøgte celle type.
+
+Dataramme `SD1`:
+
+* `Entrez_ID` gen ID
+* `Gene` gen navn
+* `ESC_RPKM` normaliseret målinger fra RNA-seq i celletypen "ESC" (embryonic stem cells)
+* `EB_RPKM` normaliseret målinger fra RNA-seq i celletypen "EB" (embryoid body)
+
+Dataramme `SD2`:
+
+* `Entrez_ID` gen ID
+* `Gene` gen navn
+* Øvrige kolonner - normaliserede målinger fra ChIP-Seq eksperimenter for forskellige transcription factors.
+
+### Spørgsmål for Opgave 2 (6-10) starter her
+
+__6__) 
+
+__a__) Lav density plots af de forskellige transcription factors fra datarammen `SD2`. 
+
+```{r,fig.width=10}
+SD2 %>%
+  select(-Entrez_ID) %>%
+  pivot_longer(-Gene) %>%
+  ggplot(aes(value,fill=name)) +
+  geom_density(alpha=0.5,show.legend = F) +
+  facet_wrap(~name)
+```
+
+__b__) Kommenter kort på de observerede fordelinger.
+
+Umiddelbart ser det ud til at de alle har samme fordeling, men varierer måske på en anden måde. 
+
+__7__) Få værdierne for de forskellige transcription factors ind i en enkel kolonne med navnet "values", således at det tilsvarende tanscription factor navn fremgår i en kolonne, der er navngivet "TF". Brug variablen `Entrez_ID` til at tilføje ekspression værdier fra `SD1` til resulterende dataframe.
+
+```{r,message=FALSE}
+datajoin <- SD2 %>%
+  select(-Gene) %>%
+  pivot_longer(-Entrez_ID) %>%
+  left_join(SD1)
+
+knitr::kable(head(datajoin))
+```
+
+__8__) 
+
+__a__) Benyt `group_by` og `nest` til at dele datasættet fra __7__) op efter de forskellige transcription factors i variablen `TF`. Viser din nested dataframe i din løsning så den kan ses i dit output.
+
+```{r}
+datajoin_nest <- datajoin %>%
+  group_by(name) %>%
+  nest()
+(datajoin_nest)
+```
+
+__b__) Skriv en funktion som kan anvendes sammen med funktionen `map` til at fjerne datapunkterne for de tilfælde hvor værdien (`value`) for transcription factor binding er nul. Anvend funktionen til at fjerne værdier som er nul fra hvert datasæt i din nested dataramme. (HINT: brug `mutate` + `map` - eller en anden måde)
+
+Først definerer jeg min funktion:
+```{r} 
+my_func <- ~(.x %>% filter(value != 0))
+```
+
+```{r}
+datajoin_nest <- datajoin_nest %>%
+  mutate(cleandata = map(data,my_func))
+```
+
+
+__c__) Hvor mange rækker er der tilbage i hvert datasættene?
+
+Jeg definerer en ny funktion som udregner antallet af rækker for hver transcriptionsfaktor. 
+
+```{r}
+rækkefunc <- ~(nrow(.x))
+
+datajoin_nest %>%
+  mutate(rækkeantal = map_dbl(data,rækkefunc))
+```
+Så vi har det samme antal observationer for hver transkriptionsfaktor. 
+
+__9__) 
+
+__a__) For hver af datasættene fra din nested dataframe (efter at du har fjernet nul-værdier), lav et scatter plot af log(`ESC_RPKM`+1) på y-aksen mod `value` på x-aksen og tilføj en lineær regression linje til plottene. Anvend gennemsigtighed i datapunkterne for at gøre dem nemmere at se.
+
+```{r}
+myplotfunc <- ~(ggplot(.x,aes(value,log(ESC_RPKM+1)))) +
+  geom_point(alpha=0.5) +
+  geom_smooth(method = "lm",se=F)
+```
+
+```{r}
+cleanunnest <- datajoin_nest %>%
+  unnest(cols = cleandata)
+
+knitr::kable(head(cleanunnest))
+```
+
+```{r,fig.width=10}
+cleanunnest %>%
+  ggplot(aes(value,log(ESC_RPKM+1))) +
+  geom_point(aes(alpha=1.5)) +
+  geom_smooth(method = "lm",se=F) +
+  facet_wrap(~name)
+```
+
+
+__b__) Kommenter kort på eventuelle sammenhænge mellem log(`ESC_RPKM`+1) og transcription factor binding.
+
+ummidelbart ser det ret uoverskueligt ud lol. 
+
+__10__) 
+
+__a__) Skriv en lineær regression funktion til at beskrive sammenhængen mellem log(`ESC_RPKM` + 1) (som uafhængig variable) og værdierne for TF binding (som afhængig variable).
+```{r}
+my_linregfunc <- ~(lm(.x$value ~ log(.x$ESC_RPKM+1),data=.x) %>% glance())
+
+```
+
+__b__) Tilføj en ny kolonne med navnet `lm_results` til din nested dataramme indeholdende resultaterne af dine modeller i en __tidy__ form (som inkluderer R-squared værdier). Vis dataframen med dine __tidy__ resultater.
+
+```{r}
+unnestlm_results <- datajoin_nest %>%
+  mutate(lm_results = map(data,my_linregfunc)) %>%
+  unnest(lm_results)
+
+knitr::kable(unnestlm_results)
+```
+
+Så vi ser at E2f1 bestemt er mere egnet til lineær regression frem for de andre TF da den har en meget højere $R^2$ værdi. 
+
+__c__) Plot R-squared værdier for de forskellige transcription factors i et barplot. Plot dem således at de transcription factors med de største værdier er til venstre.
+
+```{r,fig.width=10}
+TF_order <- unnestlm_results %>%
+  arrange(desc(r.squared)) %>%
+  pull(name)
+
+unnestlm_results %>%
+  ggplot(aes(name,r.squared,fill=name)) +
+  geom_bar(stat="identity",position = "dodge",show.legend = F) +
+  scale_x_discrete(limits = TF_order) +
+  xlab("Transkriptionsfaktor")
+```
+
+__d__) Lav samme plots som i __9__) men tilføj denne gang labels med dine R-squared værdier direkte på plottet.
+
+```{r}
+library(glue) 
+label_data <- unnestlm_results %>%
+  mutate(
+    rsqr = signif(r.squared, 2),
+    pval = signif(p.value, 2),
+    label = glue("R^2 = {rsqr}")
+  ) %>%
+  select(name, label)
+knitr::kable(label_data)
+```
+
+```{r,fig.width=10,message=FALSE}
+cleanunnest %>%
+  ggplot(aes(value,log(ESC_RPKM+1))) +
+  geom_point(aes(alpha=1.5),show.legend = F) +
+  geom_smooth(method = "lm",se=F) +
+  geom_text(
+    x = 2, 
+    y = 4.7,
+    data = label_data, aes(label = label),
+    color="Blue",
+    size = 4.3) +
+  facet_wrap(~name) +
+  theme_bw()
+```
+
