@@ -1,0 +1,506 @@
+---
+title: "Cheat sheet"
+author: "Kristian Hungeberg"
+date: "22/6/2021"
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Denne fil er lavet af Kristian Ulrik Hungeberg den 22-06-2021. 
+
+# Beskrivelser af kommandoer 
+
+`geom_histogram()`: Denne kommando er indenfor ggplot og laver sjovt nok et histogram. Hvis du gerne vil have en mere markeret kant på barerne i histogrammet
+så kan du anvende `color="farve"`. Yderligere bestemmer du antallet af bars med bins="antal". 
+
+`scale_color/fill_brewer`: Denne kommando er indenfor ggplot og kan bruges hvis du gerne vil give din figur en bestemt farvepalette. For at bestemme denne 
+farvepallette skal du sige palette="farvecombo" inden i funktionen så `scale_color/fill_brewer(palette="farvecombo")`
+
+`coord_cartesian`: Med denne kommando kan du "zoome ind" på din figur ved at angive grænser for hvor langt y og x må gå. Dette gøres med xlim og ylim. Eksempelvis 
+kan vi se på `coord_cartesian(xlim=c(40,50),ylim = c(16,19))` hvilket bestemmer at x skal være være 40 til 50 og y skal være mellem 16 og 19. 
+
+`scale_x/y_discrete`: Denne kommando lader dig rykke rundt på dine x eller y værdier hvis de er discrete (altså hvis det er faktorer tror jeg). Du rykker rundt 
+med `limits = c(a,b,c)` hvor a,b og c bare er et eksempel på discrete værdier. 
+
+`scale_fill/color_manual`: Denne kommando lader dig selv bestemme farvekomboeen så længe der er en farve til hvert element du vil farve. 
+
+`geom_v/hline`: Laver hhv en vertikal eller horisontal linje. Hvis du har udregnet middelværdier eller andre værdier for variable som er i plottet med summarise 
+så kan du sige data=(det som du nu har kaldt dit summarise datasæt) og benytte yintercept eller xintercept i aes. Eksempelvis har vi: 
+`geom_vline(data=meanspecies,show.legend = FALSE,aes(xintercept=meanbilllength,colour=species),lty=2)`
+
+`annotate`: Med denne kommando kan du tilføje text til dit plot så længe du specificerer det med "text" og efterfølger med label="hvad der skal stå". Eksempel: 
+`annotate("text",label="Adelie",40,20,size=8)`. 40 angiver x værdien centeret af teksten skal være på og ligeledes med 20 for y. 
+
+`select()`: Denne kommando bliver brugt virkelig virkelig ofte herunder er fx `where(is.numeric)` fantastisk til at udvælge alle de numeriske variabler i et datasæt. Yderligere hvis du vil hive fat i nogle bestemte variabler, lad os sige variabel "højde" og variabel "p.value". Så ville vi sige 
+`select(højde,p.value)` for at få fat på disse variable. Modsat, hvis vi gerne vil have alle variable bortset fra de førnævnte, ville vi skrive `select(-højde,-p.value)`. Lad os nu sige vi kun vil have nogle varible som starter med "s", så bruger vi `starts_with("s")`
+
+`mutate()`: Denne kommando er skøn hvis du gerne vil ændre på en variabel. lad os sige vi gerne vil ændre typen a variabel over til en factor. Så ville vi sige 
+`mutate(variabel = as.factor(variabel))` hvor man selvfølgelig udskifter "variabel" med navnet på den variabel der er snakke om. 
+
+`arrange()`: Hvis vi gerne vil opdele vores datasæt i forhold til en bestemt variabel fra størst til mindst eller omvendt, så bruger vi arrange. vil vi have de største værdier øverst i datasættet siger vi `arrange(desc(variabel))`. 
+
+`rename()`: Hvis vi gerne vil ændre navnet på en variabel, lad os sige vi vil ændre en variabel til at hedde banan, så ville vi skrive
+`rename("banan" = variabel)` (NOTÉR: Vi skriver det vi gerne vil ændre navnet til først. "lig med tegnet" er ikke kommutativt i R!). Yderligere hvis vi gerne vil have alle variabelnavne med stort bruger vi`rename_with(toupper)`
+
+`scale_x/y_continuous`: Hvis nu vi har en kontinuert akse, så kan vi scalere på hhv x eller y aksen ved at bruge `trans="funktion"`. Et eksempel på dette er 
+`scale_y_continuous(trans = "log10")`. Dette er generelt smart for en mere overskuelig datavisualisering. 
+
+`summarise()`: Denne kommando er skøn til hvis du gerne vil lave en analyse af en bestemt variabel ift muligvis en anden variabel. Et eksempel på dette: 
+`titanic_clean %>% group_by(Pclass) %>% summarise(medalder = median(Age),maxalder = max(Age),minalder = min(Age),sdalder = sd(Age))`. Den kode vil give os en dataramme med alle de forskellige analyser opdelt efter de forskellige elementer i Pclass. Skal der opdeles efter flere variable siger man bare 
+`group_by(Pclass,ny_variabel)`
+
+`recode`: Hvis vi vil ændre navnet på elementerne i et datasæt, kan vi gøre det med en blanding af recode og mutate. Et eksempel er: 
+`mutate(Embarked = recode(Embarked,C="Cherbourg",Q="Queenstown",S="Southhampton"))` Her ændrer vi elementerne C,Q og S i Embarked, til at være den by som bogstavet står for. Husk igen af lig med tegnet '=' ikke er kommutativt i R. 
+
+`pivot_longer`: Dette er en fantastisk kommando hvis du gerne vil plotte diverse variabler samtidig. Det tillader os nemlig at få én hoved kolonne og 
+de andre variable ender i kolonnen "name" (vi kan fx godt ændre den ved at sige `names_to="variabelkolonne"` ligeledes med `values_to="valuekolonne`. Til tider kan det være vigtigt også at angive dette. 
+
+`pivot_wider`: Ofte så er det kun pivot_longer vi bruger, men hvis vi nu skal frem og tilbage, så kan vi gå fra long form (med pivot_longer) 
+til wide form (pivot_wider) ved at skrive således. Lad os sige vi har lavet vores long_form således: `pivot_longer(cols= -var1,names_to="name",values_to="value)`
+så ville vi gå tilbage til wide form med `pivot_wider(id_cols = var1,names_from="name",values_from=""value")`.
+
+`left_join`: Ofter den kommando vi bruger når vi gerne vil sætte 2 datasæt sammen. Det vigtige her er at vi har mindst én variabel tilfælles. Til tider skal man angive `by="fællesvariabel` inde i kommandoen, men det er ikke altid nødvendigt, andre gange kan du bare sige `left_join(datasæt)`.  Der er også `inner_join` og `full_join` som virker lidt på samme måde, men nogle lidt mere restriktive ift hvilke data der kan overføres (ift NA værdier og sådan). 
+
+`map()`: Dette er en kommando som kan virke lidt ligesom summarise. Vi vælger vores variabel ud og så specificerer vi `map(analyse)`. Hvis vi gerne vil have resultatet i en bestemt form så er default formen en list. For dataramme, double, mm brug map_df,map_dbl,map_... 
+Vi kan også specificere vores analyse som en funktion forinden, så vi har `map(minfunktion)`(husk at funktioner starter med ~). Default variabel er vidst .x 
+Hvis du har nested din data kan du fx lave en ny kolonne som indeholder evt en t.test for hver af dine nestede data. Et eksempel på dette: 
+`mutate(new_column_cor = map_dbl(data,~cor(.x$Sepal.Width,.x$Sepal.Length)))`. Læg her mærke til vi angiver kolonnen data (hvilket indeholder de nested data) først og så funktionen. Så vi gør det med `map(datakolonne,funktion)`
+
+`geom_smooth()`: Kommando indenfor ggplot og oftest skal du nok angive method="lm" og se=F. Denne kommando bruges i sammenhæng med et scatter plot og plotter 
+en regressionlinje der hvor den mener det er passende (hvilket det ofte er). 
+
+`case_when`: Kan tjekkes i nedenstående færdigskrevede kode til lineær regression. 
+
+`drop_na()`: Fjerner rækker med NA-værdier. 
+
+`scale()`: Skalerer dataen så der ikke er nogle punkter som skiller sig helt ud (gør det så vi kan holde flere variable indenfor et datasæt.). Virker kun på numeriske variabler 
+
+`lm`: Funktionen som laver lineær regression i R. her angiver du y ~ x (ikke omvendt) og specificerer hvilken data du gør det på. Et eksempel: 
+`lm(y ~ x,data=datasæt)`
+
+`kmeans()`: Dette er funktionen som laver kmeans clustering analyse på dit datasæt. Den leder efter klynger af data som ser ud til at holde sig sammen. Den modtager kun numeriske variable og skal gerne skaleres med scale(). 
+
+`augment()`: Mystisk kommando som selv ved hvad den skal tilføje fra en analyse. Fx sætter den cluster på hver observation i dit datasæt hvis du gør det med kmeans. Den måde vi bruger augment på er `augment(analysedata,datasæt)`. 
+
+`prcomp()`: Dette er funktion som laver PCA analysen. Hvis din data ikke allerede er skaleret så skal du sige `scale=T` indenfor funktionen. Modtager kun numerisk input. 
+
+`seperate()`: Denne kommando kan adskille en variabel over i 2. Du angiver første hvilken variabel du vil splitte og derefter skriver du `into=c("a","b")`
+Eksempel: `separate(treat_rep,into=c("Treatment","Replicate"))`
+
+`slice`: Denne kommando er til hvis vi gerne vil have en bestemt portion af datasættet ud. 
+
+ `geom_text_repel`: Denne kommando bruges indenfor ggplot og er til hvis du gerne vil have nogle navne eller andet text over dit plot. Husk at label=variabel bruges indenfor aes(). 
+ 
+ `unique`: Dette er en summary stastitic som viser dig de unikke værdier indenfor en vektor. 
+ 
+ `quantile`: Dette er godt indenfor filter eller hvis vi laver et logisk statement. Quantile virker ved at du først indsætte variabel og derefter angivet en procent, så hvis du kun vil have værdier i vektoren som er indenfor de øverste 80%, så skriver du `quantile(variabel,0.8)`. 
+ 
+ 
+ 
+# Færdigskrevet kode til kmeans,hclust, lineær regression eller PCA og andet.
+
+## Pakker
+
+```{r,include=FALSE}
+library(tidyverse)
+library(dendextend)
+library(GGally)
+library(glue)
+library(broom)
+library(gridExtra)
+library(NbClust)
+library(ggdendro)
+library(ggrepel)
+library(palmerpenguins)
+```
+
+```{r}
+require(GGally)
+```
+
+```{r}
+penguins <- penguins
+```
+
+Angiv datasæt og variabler: 
+```{r}
+datasæt <- penguins %>% drop_na()
+var1 <- datasæt$bill_length_mm #til x-aksen
+var2 <- datasæt$bill_depth_mm #til y-aksen
+var3 <- datasæt$species #til color/fill 
+```
+Nest data hvis nødvendigt: 
+
+```{r}
+datanest <- datasæt %>%
+  group_by(species) %>%
+  nest()
+
+datanest
+```
+
+## Lineær regression.
+```{r}
+# linregdatasæt <- lm(y ~ x,data=datasæt) #Kan være tidy/glance/summary alt efter hvad du vil vide
+# linreg
+```
+
+Indfører en kolonne med lineær regression på al din nestede data: 
+```{r}
+datanest <- datanest %>%
+  mutate(linregnest = map(data,~(lm(.x$bill_depth_mm ~ .x$bill_length_mm,data=.x) %>% glance())))
+
+unnestlinreg <- datanest %>%
+  unnest(linregnest)
+
+unnestlinreg
+  
+```
+
+### Labeldata til lineær regression (Tilpas efter datasæt)
+
+Laver labelse du kan smække ovenpå plottet 
+
+KUN FOR NESTED DATA
+```{r}
+library(glue)  # for putting the values together in a label
+label_data <- unnestlinreg %>%
+  mutate(
+    rsqr = signif(r.squared, 2),  # round to 2 significant digits
+    pval = signif(p.value, 2),
+    label = glue("r^2 = {rsqr}, p-value = {pval}")
+  ) %>%
+  select(species, label)
+label_data
+```
+
+Smækker labelet ovenpå plottet
+KAN KUN UDFØRES HVIS DU HAR LAVET LABEL HVILKET KRÆVER NESTED DATA
+```{r}
+datasæt %>%
+ggplot(aes(bill_length_mm, bill_depth_mm, colour=species)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_text(
+    x = 2, 
+    y = c(1,2,3),
+    data = label_data, aes(label = label), #specify label data from above
+    size = 4
+  ) + 
+  scale_color_brewer(palette = "Set2") +
+  theme_minimal() 
+```
+
+Laver de der stjerner over barplottet (skal angives med geom_text(aes(label = sig)))
+Laves over en unnested lineær regressionsdata. 
+```{r}
+linreg_sig <- unnestlinreg %>%
+  select(-data) %>% 
+  mutate(sig = case_when(p.value < 0.001 ~ "***",
+                         p.value < 0.01 ~ "**",
+                         p.value < 0.05 ~ "*",
+                         p.value < 0.1 ~ ".",
+                         p.value >= 0.1 ~ "n.s"))
+```
+
+```{r}
+# linregcars_sig %>%
+#   ggplot(aes(species,p.value)) +
+#   geom_bar(stat="identity",position = "dodge") +
+#   geom_text(aes(label = sig))
+```
+
+
+## K-means
+
+### K-means analyse: (Tilpas til datasæt)
+
+Template der udregner det optimale/bedste antal clusters at bruge: 
+
+```{r}
+cluster_30_indexes <- NbClust(data = datasæt %>% select(where(is.numeric)) %>% scale, 
+                              distance = "euclidean", 
+                              min.nc = 2, 
+                              max.nc = 9, 
+                              method = "complete")
+```
+
+Barplot af hvor godt hvert cluster er:
+
+```{r}
+as_tibble(cluster_30_indexes$Best.nc[1,]) %>%
+  ggplot(aes(x=factor(value))) + 
+  geom_bar(stat="count",fill="blue") + 
+  coord_flip() +
+  theme_minimal()
+```
+
+
+Template for standard Kmeans analyse med 2 clusters(du kan selvfølgelig selv vælge antallet)
+```{r}
+datasæt.scaled <- datasæt %>%
+  drop_na() %>%
+  select(where(is.numeric)) %>%
+  scale()
+
+kmeansdata <- datasæt.scaled %>%
+  kmeans(centers = 3)
+
+datasæt <- augment(kmeansdata,datasæt)
+```
+
+Centroid data
+```{r}
+ktidy <- kmeansdata %>% tidy()
+
+ktidy
+```
+
+Template til scatterplot med centroids 
+```{r}
+datasæt %>%
+  ggplot(aes(scale(bill_length_mm),scale(bill_depth_mm))) +
+  geom_point(aes(color=.cluster)) +
+  geom_point(data = ktidy,size=10,shape="x",show.legend = F)
+```
+
+Muligvis den ultimative template:
+
+```{r}
+my_func <- ~kmeans(datasæt %>% select(where(is.numeric)) %>% scale(),
+                 centers = .x)  
+
+kclusts <- 
+  tibble(k = 1:9) %>%
+  mutate( kclust = map(k, my_func),
+          tidied = map(kclust,tidy),
+          glanced = map(kclust,glance),
+          augmented = map(kclust,augment,datasæt)
+        )
+
+
+kclusts_tidy    <- kclusts %>% unnest(tidied)
+kclusts_augment <- kclusts %>% unnest(augmented) 
+kclusts_glance <-  kclusts %>% unnest(glanced)
+kclusts_glance
+```
+
+Template der viser et elbowplot af hvor mange datapunkter der er i hvert cluster. 
+
+```{r}
+kclusts_glance %>%
+  ggplot(aes(k,tot.withinss)) +
+  geom_line() +
+  geom_point(aes(color=as.factor(k)))
+```
+
+## Hierakisk clustering: 
+
+Når vi laver hierakisk clustering skal vi skalere dataen og have row.names tilsvarende til observationerne. Du kan evt kopiere alt fra denne session 
+
+Template til datapræperation
+
+```{r}
+data(msleep)
+msleep_clean <- msleep %>% select(name,where(is.numeric)) %>% drop_na()
+msleep_scaled <- msleep_clean %>% select(-name) %>% scale
+row.names(msleep_scaled) <- msleep_clean$name
+```
+
+Udregning a distancer 
+
+```{r}
+dsleep <- dist(msleep_scaled)
+
+hclustsleep <- hclust(dsleep,method = "complete")
+```
+
+Definering af clusters med cutree
+```{r}
+clusters <- cutree(hclustsleep,k = 5,order_clusters_as_data = F)
+```
+
+Tilføjelse af vores hclust analyse til dendrodata hvorefter vi definerer nye labelse så de passer med vores datasæt.
+
+```{r}
+dend_data <- dendro_data(hclustsleep %>% as.dendrogram,type="rectangle")
+
+dend_data$labels <- dend_data$labels %>%
+  mutate(cluster = clusters)
+
+dend_data$labels
+```
+
+Egentligt plot af vores dendrogram
+
+```{r}
+ggplot(dend_data$segments) +
+  geom_segment(aes(x=x,y=y,xend=xend,yend=yend)) +
+  coord_flip() +
+  geom_text(data = dend_data$labels,aes(x,y,label = label,col=factor(cluster)),hjust=1,size=3) +
+  theme_dendro()
+  
+```
+
+## PCA analyse: 
+
+Template for standard PCA analyse: 
+
+```{r}
+# pcadata <- cancer %>%
+#   select(where(is.numeric)) %>%
+#   prcomp(scale=T)
+# 
+# canceraug <- augment(pcadata,cancer) # Tilføjer vores pcadata til datasættet. 
+# 
+# head()
+```
+
+Hvis der også er tilføjet kmeans data til datasættet kan vi plotte hvor hvor godt den fanger clusteret 
+```{r}
+# canceraug %>%
+#   ggplot(aes(.fittedPC1,.fittedPC2,color=.cluster)) +
+#   geom_point()
+```
+
+Hvis vi gerne vil se på hvor mange procent at dataen som bliver fanget af hhv hver principal componen, så gøres det såeledes: 
+
+```{r}
+# pcadata %>% tidy(matrix = "eigenvalues")
+```
+
+Hvis vi gerne vil lave det man kalder et "screeplot" der basalt set bare er hvor mange procent hver principal component tager, sat ind i et barplot
+
+```{r}
+# pcadata %>% tidy(matrix = "eigenvalues") %>%
+#   ggplot(aes(PC,percent)) +
+#   geom_bar(stat="identity",fill="steel blue") +
+#   scale_y_continuous(labels = scales::percent_format())
+```
+
+Vil vi gerne se hvordan hhv hver variabel påvirker hver PC, så bruges tidy(matrix = "rotation"). 
+
+```{r}
+# pcadata %>% tidy(matrix="rotation")
+```
+
+Hvis vi gerne vil plotte hvordan hver variabel er ift hver PC, bruger vi koden her: Noter her at det er for pc1 og pc2 nedenstående. 
+
+```{r}
+# rotdat <-pcadata %>% tidy(matrix="rotation") %>%
+#   pivot_wider(id_cols = column,names_from = PC,values_from = value)
+# 
+# rotdat %>%
+#   ggplot(aes(`1`,`2`)) +
+#   geom_point() +
+#   geom_text_repel(aes(label = column))
+```
+
+### Smarte koder til at gøre nogle ting nemmere
+
+Hvis vi gerne vil lave et plot i en rækkefølge fra størst til mindst eller omvendt, så kan vi definere en vektor der indeholder alle navnene i den rækkefølge. Herefter sætter vi det ind under `scale_x/y_discrete(limits = names_order) :D. 
+```{r}
+# names_order <- ttestglance %>%
+#   arrange(p.value) %>%
+#   pull(name)
+```
+
+Tjek hvor mange numeriske koloner der er tilbage: 
+
+```{r}
+datasæt %>%
+  select(where(is.numeric)) %>%
+  ncol()
+```
+
+# Tips til problemløsninger
+
+Meget simpelt, men man kan klikke på datasættet oppe i enviroment og se på det i et nyt vindue. Dette er super godt til tjekke efter om man har skrevet sin kode rigtig og at få overblik over sit datasæt. 
+
+Hvis dokumentet ikke kan knitte, så tjek om der har været et sted hvor du har defineret en variabel og så slettet koden. Når R knitter dit dokument, så går den igennem al din kode igennem igen, så en god idé er at tjekke om du kan køre al din kode igennem med "Run all" under "Run" knappen i højre hjørne. 
+
+Hvis farverne i dit plot mere har sådan en flydende farveblanding, så er det nok fordi den variabel du farver efter ikke er en faktor. Derfor er det nok godt 
+lige at bruge mutate(variabel=as.factor(variabel)). 
+
+Under pivot_longer, tjek at du har angivet cols = -variabel og ikke cols = variabel. 
+
+Når der skal anvendes left_join er kan en god idé at ændre et kolonnenavn så der er en fælles kolonne der kan joines fra. 
+
+Hvis du har skulle lave en ny kolonne på nested data med en t.test eller anden statistisk analyse, så husk %>% tidy() eller glance(). 
+
+Af én eller anden grund, så når man laver t.test eller correlationstest, så skal man angive variablerne med data$variabel som base R, så husk lige det. 
+
+Hvis en funktion eller en chunk ikke kan loade uden fejl, prøv at trykke run all igen. 
+
+Hvis du ikke kan se dine centroids i dit kmeans plot så check om du bruger de skalerede versioner af variablerne
+
+Hvis din kode ikke gider køre igennem tjek om du har brugt en funktion som kun kan modtage numeriske variabler og i så fald bruge select(where(is.numeric)) så den kan bruges. 
+
+Nogle gange hvis man bruger flere datasæt i et ggplot, så specificer color og shape eller andre ting i geom_plot(aes()) frem for ggplot(aes()). 
+
+Ctrl + shift + c lader dig kommentere alle markerede linjer ud :))) 
+
+Tjek efter om du har skrevet med stort de rigtige steder!
+
+Hvis du laver en t.test eller cor.test og du gør det mellem vektore der er numerisk og ikke numerisk, så benyt ~ i stedet for komma til at opdele dem indenfor funktionen. 
+
+Hvis du har en variabel som vitterligt bare er et tal, så hvis du skal referere til den skal du sige `1` (hvis du tallet var 1. Det vigtige er bare du markerer tallet med ``. 
+
+R forstår boolske værdier TRUE og FALSE som 1 og 0 (Dette kan tjekkes i console). Man kan altså summere logiske statements. 
+
+Tjek om den kommando du har brugt skulle være indenfor aes() i din ggplot kode. 
+
+Hvis du skal lave et line/elbow plot, så kan det være relevant at at skrive group=variabel til tider. 
+
+
+
+### Tips til markdown: 
+
+Du kan lave bullet points ved at starte en linje med '+'. Vi kan også starte en linje med *, hvorefter vi fortsætter med plusser, altså: 
+
+* item 1
+ 
+
+
+hvis vi gerne vil skrive noget med fed, så gør vi det således **ord** og hvis det skal være italic eller svagt skrå skrift *ord*
+
+CHUNK OPTIONS: 
+
+include = FALSE
+prevents code and results from appearing in the finished file. R Markdown still runs the code in the chunk, and the results can be used by other chunks. 
+SUPER VIGTIG HVIS DOKUMENTET SKAL SE LÆKKERT UD. 
+
+echo = FALSE
+prevents code, but not the results from appearing in the finished file. This is a useful way to embed figures. 
+Rigtig god hvis vi laver plots og ikke nødvendigvis behøver at vise koden. 
+
+message = FALSE
+prevents messages that are generated by code from appearing in the finished file.
+Vil generelt sige at dette skal være på alle chunks 
+
+warning = FALSE
+prevents warnings that are generated by code from appearing in the finished.
+Dette ville jeg nok også skrive på hver chunk. 
+
+fig.cap = "..."
+adds a caption to graphical results.
+
+eval = FALSE
+does not evaluate the code
+Hvis du har kopiret noget kode eller andet halløj som ikke har effekt på opgaven, så er dette godt at have på. 
+
+Matematik skrives imellem dollartegn og er i LateX sproget. 
+
+knitr:kable(data) er godt til at lave et lækkert tabble når du knitter. Måske 
+
+
+```{r}
+59*6+41*4+190*3+44*6+147*1.1+129+381*0.8
+```
+
+
